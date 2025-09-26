@@ -68,7 +68,21 @@ public abstract class ExportCommandBase : DiscordCommandBase
         Description = "Which types of threads should be included.",
         Converter = typeof(ThreadInclusionModeInputConverter)
     )]
-    public ThreadInclusionMode ThreadInclusionMode { get; set; } = ThreadInclusionMode.None;
+    public ThreadInclusionMode ThreadInclusionMode { get; init; } = ThreadInclusionMode.None;
+
+    [CommandOption(
+        "threads-output",
+        Description = "Output file or directory path of threads. "
+            + "See --output for formatting instructions. "
+            + "If not specified, threads will be exported to the same directory as other channels. "
+    )]
+    public string? ThreadsOutputPath
+    {
+        get;
+        // Handle ~/ in paths on Unix systems
+        // https://github.com/Tyrrrz/DiscordChatExporter/pull/903
+        init => field = value is not null ? Path.GetFullPath(value) : null;
+    }
 
     [CommandOption(
         "filter",
@@ -236,6 +250,49 @@ public abstract class ExportCommandBase : DiscordCommandBase
             await console.Output.WriteLineAsync($"Fetched {fetchedThreadsCount} thread(s).");
         }
 
+        // Make sure the user does not try to export multiple channels into one file.
+        // Output path must either be a directory or contain template tokens for this to work.
+        // https://github.com/Tyrrrz/DiscordChatExporter/issues/799
+        // https://github.com/Tyrrrz/DiscordChatExporter/issues/917
+        var isValidOutputPath =
+            // Anything is valid when exporting a single channel
+            unwrappedChannels.Count <= 1
+            // When using template tokens, assume the user knows what they're doing
+            || OutputPath.Contains('%')
+            // Otherwise, require an existing directory or an unambiguous directory path
+            || Directory.Exists(OutputPath)
+            || Path.EndsInDirectorySeparator(OutputPath);
+
+        if (!isValidOutputPath)
+        {
+            throw new CommandException(
+                "Attempted to export multiple channels, but the output path is neither a directory nor a template. "
+                    + "If the provided output path is meant to be treated as a directory, make sure it ends with a slash. "
+                    + $"Provided output path: '{OutputPath}'."
+            );
+        }
+
+        if (ThreadsOutputPath != null)
+        {
+            var isValidThreadsOutputPath =
+                // Anything is valid when exporting a single channel
+                unwrappedChannels.Count <= 1
+                // When using template tokens, assume the user knows what they're doing
+                || ThreadsOutputPath.Contains('%')
+                // Otherwise, require an existing directory or an unambiguous directory path
+                || Directory.Exists(ThreadsOutputPath)
+                || Path.EndsInDirectorySeparator(ThreadsOutputPath);
+
+            if (!isValidThreadsOutputPath)
+            {
+                throw new CommandException(
+                    "Attempted to export multiple channels, but the thread output path is neither a directory nor a template. "
+                        + "If the provided thread output path is meant to be treated as a directory, make sure it ends with a slash. "
+                        + $"Provided thread output path: '{ThreadsOutputPath}'."
+                );
+            }
+        }
+
         // Export
         var errorsByChannel = new ConcurrentDictionary<Channel, string>();
         var warningsByChannel = new ConcurrentDictionary<Channel, string>();
@@ -271,10 +328,16 @@ public abstract class ExportCommandBase : DiscordCommandBase
                                         innerCancellationToken
                                     );
 
+                                    // Resolve which output path to use
+                                    var OutPath =
+                                        (channel.IsThread && ThreadsOutputPath != null)
+                                            ? ThreadsOutputPath
+                                            : OutputPath;
+
                                     var request = new ExportRequest(
                                         guild,
                                         channel,
-                                        OutputPath,
+                                        OutPath,
                                         AssetsDirPath,
                                         ExportFormat,
                                         After,
