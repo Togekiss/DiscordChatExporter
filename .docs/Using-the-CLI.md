@@ -327,6 +327,8 @@ This command accepts more parameters:
 
 - `--include-vc` - whether to include voice channels. Defaults to `true`.
 - `--include-threads` - whether to include all or active threads. Defaults to `none`.
+- `--include-categories` - whether to add category IDs to the list. Defaults to `false`.
+- `--preserve-order` - by default, channels and threads are sorted by category, then alphabetically. Use this option to keep the order as it appears in Discord.
 
 
 ### List direct message channels
