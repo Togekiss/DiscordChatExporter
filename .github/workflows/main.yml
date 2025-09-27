@@ -4,12 +4,12 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - master
+      - release
     tags:
       - "*"
   pull_request:
     branches:
-      - master
+      - release
 
 env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
@@ -51,10 +51,12 @@ jobs:
       - name: Report issues
         if: ${{ failure() && steps.verify.outcome == 'failure' }}
         run: echo "::error title=Bad formatting::Formatting issues detected. Please build the solution locally to fix them."
-
-  test:
+  
+  test-DISABLED:
+    # Tests need access to a particular Discord server I do not have access to, so disabled for now
     # Tests need access to secrets, so we can't run them against PRs because of limited trust
-    if: ${{ github.event_name != 'pull_request' }}
+    # if: ${{ github.event_name != 'pull_request' }}
+    if: false
 
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -151,7 +153,7 @@ jobs:
 
     needs:
       - format
-      - test
+    #  - test
       - pack
 
     runs-on: ubuntu-latest
@@ -231,7 +233,10 @@ jobs:
           ${{ matrix.asset }}.${{ matrix.rid }}.zip
           --repo ${{ github.event.repository.full_name }}
 
-  notify:
+  notify-DISABLED:
+
+    if: false
+    
     needs: deploy
     runs-on: ubuntu-latest
     timeout-minutes: 10
