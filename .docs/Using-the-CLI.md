@@ -346,6 +346,7 @@ This command accepts more parameters:
 
 - `--include-vc` - whether to include voice channels. Defaults to `true`.
 - `--include-threads` - whether to include all or active threads. Defaults to `none`.
+- `--include-categories` - whether to include categories and their IDs to the list. Defaults to `false`
 - `--relative-positions` - sort channels like they would in Discord, instead of alphabetically. Defaults to `false`.
 
 
