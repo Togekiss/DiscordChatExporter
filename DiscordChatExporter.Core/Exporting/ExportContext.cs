@@ -35,11 +35,16 @@ internal class ExportContext(DiscordClient discord, ExportRequest request)
         NormalizeDate(instant).ToString(format, Request.CultureInfo);
 
     public async ValueTask PopulateChannelsAndRolesAsync(
+        bool relativePositions = false,
         CancellationToken cancellationToken = default
     )
     {
         await foreach (
-            var channel in Discord.GetGuildChannelsAsync(Request.Guild.Id, cancellationToken)
+            var channel in Discord.GetGuildChannelsAsync(
+                Request.Guild.Id,
+                relativePositions,
+                cancellationToken
+            )
         )
         {
             _channelsById[channel.Id] = channel;

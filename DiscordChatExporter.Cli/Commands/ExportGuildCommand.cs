@@ -36,7 +36,11 @@ public class ExportGuildCommand : ExportCommandBase
                 async ctx =>
                 {
                     await foreach (
-                        var channel in Discord.GetGuildChannelsAsync(GuildId, cancellationToken)
+                        var channel in Discord.GetGuildChannelsAsync(
+                            GuildId,
+                            RelativePositions,
+                            cancellationToken
+                        )
                     )
                     {
                         if (channel.IsCategory)
