@@ -27,13 +27,24 @@ public class GetChannelsCommand : DiscordCommandBase
     )]
     public ThreadInclusionMode ThreadInclusionMode { get; init; } = ThreadInclusionMode.None;
 
+    [CommandOption(
+        "include-categories",
+        Description = "Include categories and their IDs in the output."
+    )]
+    public bool IncludeCategories { get; init; } = false;
+
     public override async ValueTask ExecuteAsync(IConsole console)
     {
         await base.ExecuteAsync(console);
 
         var cancellationToken = console.RegisterCancellationHandler();
 
-        var channels = (await Discord.GetGuildChannelsAsync(GuildId, cancellationToken))
+        // Fetch channels only once
+        var allChannels = await Discord.GetGuildChannelsAsync(GuildId, cancellationToken);
+
+        var categories = allChannels.Where(c => c.IsCategory).OrderBy(c => c.Position).ToArray();
+
+        var channels = allChannels
             .Where(c => !c.IsCategory)
             .Where(c => IncludeVoiceChannels || !c.IsVoice)
             .OrderBy(c => c.Parent?.Position)
@@ -60,54 +71,81 @@ public class GetChannelsCommand : DiscordCommandBase
                     .ToArray()
                 : [];
 
-        foreach (var channel in channels)
+        // Extra intent for channels and threads when categories are included
+        var indent = IncludeCategories ? "   " : "";
+
+        foreach (var category in categories)
         {
-            // Channel ID
-            await console.Output.WriteAsync(
-                channel.Id.ToString().PadRight(channelIdMaxLength, ' ')
-            );
+            if (IncludeCategories)
+            {
+                // Category ID
+                await console.Output.WriteAsync(
+                    category.Id.ToString().PadRight(channelIdMaxLength, ' ')
+                );
 
-            // Separator
-            using (console.WithForegroundColor(ConsoleColor.DarkGray))
-                await console.Output.WriteAsync(" | ");
+                // Separator - uses \ instead of | to differentiate between categories and channels
+                using (console.WithForegroundColor(ConsoleColor.DarkGray))
+                    await console.Output.WriteAsync(" \\ ");
 
-            // Channel name
-            using (console.WithForegroundColor(ConsoleColor.White))
-                await console.Output.WriteLineAsync(channel.GetHierarchicalName());
+                // Category name
+                using (console.WithForegroundColor(ConsoleColor.White))
+                    await console.Output.WriteLineAsync($"{category.Name}");
+            }
 
-            var channelThreads = threads.Where(t => t.Parent?.Id == channel.Id).ToArray();
-            var channelThreadIdMaxLength = channelThreads
-                .Select(t => t.Id.ToString().Length)
-                .OrderDescending()
-                .FirstOrDefault();
+            var categoryChannels = channels.Where(c => c.Parent?.Id == category.Id).ToArray();
 
-            foreach (var channelThread in channelThreads)
+            foreach (var channel in categoryChannels)
             {
                 // Indent
-                await console.Output.WriteAsync(" * ");
+                await console.Output.WriteAsync(indent);
 
-                // Thread ID
+                // Channel ID
                 await console.Output.WriteAsync(
-                    channelThread.Id.ToString().PadRight(channelThreadIdMaxLength, ' ')
+                    channel.Id.ToString().PadRight(channelIdMaxLength, ' ')
                 );
 
                 // Separator
                 using (console.WithForegroundColor(ConsoleColor.DarkGray))
                     await console.Output.WriteAsync(" | ");
 
-                // Thread name
+                // Channel name
                 using (console.WithForegroundColor(ConsoleColor.White))
-                    await console.Output.WriteAsync($"Thread / {channelThread.Name}");
+                    await console.Output.WriteLineAsync(channel.GetHierarchicalName());
 
-                // Separator
-                using (console.WithForegroundColor(ConsoleColor.DarkGray))
-                    await console.Output.WriteAsync(" | ");
+                var channelThreads = threads.Where(t => t.Parent?.Id == channel.Id).ToArray();
+                var channelThreadIdMaxLength = channelThreads
+                    .Select(t => t.Id.ToString().Length)
+                    .OrderDescending()
+                    .FirstOrDefault();
 
-                // Thread status
-                using (console.WithForegroundColor(ConsoleColor.White))
-                    await console.Output.WriteLineAsync(
-                        channelThread.IsArchived ? "Archived" : "Active"
+                foreach (var channelThread in channelThreads)
+                {
+                    // Indent
+                    await console.Output.WriteAsync(indent + " * ");
+
+                    // Thread ID
+                    await console.Output.WriteAsync(
+                        channelThread.Id.ToString().PadRight(channelThreadIdMaxLength, ' ')
                     );
+
+                    // Separator
+                    using (console.WithForegroundColor(ConsoleColor.DarkGray))
+                        await console.Output.WriteAsync(" | ");
+
+                    // Thread name
+                    using (console.WithForegroundColor(ConsoleColor.White))
+                        await console.Output.WriteAsync($"Thread / {channelThread.Name}");
+
+                    // Separator
+                    using (console.WithForegroundColor(ConsoleColor.DarkGray))
+                        await console.Output.WriteAsync(" | ");
+
+                    // Thread status
+                    using (console.WithForegroundColor(ConsoleColor.White))
+                        await console.Output.WriteLineAsync(
+                            channelThread.IsArchived ? "Archived" : "Active"
+                        );
+                }
             }
         }
     }
