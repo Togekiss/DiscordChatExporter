@@ -13,6 +13,7 @@ public class ChannelExporter(DiscordClient discord)
     public async ValueTask ExportChannelAsync(
         ExportRequest request,
         IProgress<Percentage>? progress = null,
+        bool relativePositions = false,
         CancellationToken cancellationToken = default
     )
     {
@@ -29,7 +30,7 @@ public class ChannelExporter(DiscordClient discord)
 
         // Build context
         var context = new ExportContext(discord, request);
-        await context.PopulateChannelsAndRolesAsync(cancellationToken);
+        await context.PopulateChannelsAndRolesAsync(relativePositions, cancellationToken);
 
         // Initialize the exporter before further checks to ensure the file is created even if
         // an exception is thrown after this point.
