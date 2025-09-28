@@ -219,6 +219,28 @@ If the channel being imported is a thread, some template tokens will resolve dif
 - `%p` - thread position
 - `%P` - parent channel position
 
+### Choosing global or relative positions for channels
+
+By default, the 'position' value of channels reflects their global position inside the server, and threads have no position.
+You can change this behavior by using `--relative-positions`. This will make channel positions start counting from '1' for each category, following the order they appear in Discord, and thread positions start counting from '1' for each channel, sorted by creation date.
+
+```console
+./DiscordChatExporter.Cli export -t "mfa.Ifrn" -c 53555 -o "C:\Discord Exports\%T\%p#%C.html"
+
+> Output: C:\Discord Exports\Art\23#art-general.html
+          C:\Discord Exports\Art\24#digital-art.html
+          C:\Discord Exports\Art\25#tradtional-art.html
+```
+```console
+./DiscordChatExporter.Cli export -t "mfa.Ifrn" -c 53555 -o "C:\Discord Exports\%T\%p#%C.html --relative-positions"
+
+> Output: C:\Discord Exports\Art\1#art-general.html
+          C:\Discord Exports\Art\2#digital-art.html
+          C:\Discord Exports\Art\3#tradtional-art.html
+```
+
+**Note:** This option might not work correctly when exporting DMs, or when exporting threads with a User token.
+
 ### Partitioning
 
 You can use partitioning to split files after a given number of messages or file size. 
@@ -324,6 +346,7 @@ This command accepts more parameters:
 
 - `--include-vc` - whether to include voice channels. Defaults to `true`.
 - `--include-threads` - whether to include all or active threads. Defaults to `none`.
+- `--relative-positions` - sort channels like they would in Discord, instead of alphabetically. Defaults to `false`.
 
 
 ### List direct message channels
