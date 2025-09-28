@@ -249,6 +249,7 @@ public class DiscordClient(
 
     public async IAsyncEnumerable<Channel> GetGuildChannelsAsync(
         Snowflake guildId,
+        bool relativePositions = false,
         [EnumeratorCancellation] CancellationToken cancellationToken = default
     )
     {
@@ -271,14 +272,29 @@ public class DiscordClient(
                 .ThenBy(j => j.GetProperty("id").GetNonWhiteSpaceString().Pipe(Snowflake.Parse))
                 .ToArray();
 
+            // When using --relative-positions, sort channels by parent
+            // to ensure the next step works.
+            if (relativePositions)
+                channelsJson = response
+                    .EnumerateArray()
+                    .OrderBy(j =>
+                        j.GetProperty("parent_id")
+                            .GetNonWhiteSpaceStringOrNull()
+                            ?.Pipe(Snowflake.Parse)
+                    )
+                    .ThenBy(j => j.GetProperty("position").GetInt32())
+                    .ToArray();
+
             var parentsById = channelsJson
                 .Where(j => j.GetProperty("type").GetInt32() == (int)ChannelKind.GuildCategory)
                 .Select((j, i) => Channel.Parse(j, null, i + 1))
                 .ToDictionary(j => j.Id);
 
-            // Discord channel positions are relative, so we need to normalize them
+            // Discord channel positions are relative to channel type, so we need to normalize them
             // so that the user may refer to them more easily in file name templates.
-            var position = 0;
+            // --relative-positions makes positions start at 1 to be more human-readable
+            var position = relativePositions ? 1 : 0;
+            Channel? previous_parent = null;
 
             foreach (var channelJson in channelsJson)
             {
@@ -288,8 +304,16 @@ public class DiscordClient(
                     ?.Pipe(Snowflake.Parse)
                     .Pipe(parentsById.GetValueOrDefault);
 
+                // This is why we had to sort by parent before
+                if (parent != previous_parent && relativePositions)
+                {
+                    previous_parent = parent;
+                    position = 1;
+                }
+                else
+                    position++;
+
                 yield return Channel.Parse(channelJson, parent, position);
-                position++;
             }
         }
     }
@@ -299,13 +323,14 @@ public class DiscordClient(
         bool includeArchived = false,
         Snowflake? before = null,
         Snowflake? after = null,
+        bool relativePositions = false,
         [EnumeratorCancellation] CancellationToken cancellationToken = default
     )
     {
         if (guildId == Guild.DirectMessages.Id)
             yield break;
 
-        var channels = await GetGuildChannelsAsync(guildId, cancellationToken);
+        var channels = await GetGuildChannelsAsync(guildId, relativePositions, cancellationToken);
 
         foreach (
             var channel in await GetChannelThreadsAsync(
@@ -313,6 +338,7 @@ public class DiscordClient(
                 includeArchived,
                 before,
                 after,
+                relativePositions,
                 cancellationToken
             )
         )
@@ -393,6 +419,7 @@ public class DiscordClient(
         bool includeArchived = false,
         Snowflake? before = null,
         Snowflake? after = null,
+        bool relativePositions = false,
         [EnumeratorCancellation] CancellationToken cancellationToken = default
     )
     {
@@ -426,7 +453,11 @@ public class DiscordClient(
                     {
                         var url = new UrlBuilder()
                             .SetPath($"channels/{channel.Id}/threads/search")
-                            .SetQueryParameter("sort_by", "last_message_time")
+                            // I can't test this, but I'm guessing this will be ok
+                            .SetQueryParameter(
+                                "sort_by",
+                                relativePositions ? "id" : "last_message_time"
+                            )
                             .SetQueryParameter("sort_order", "desc")
                             .SetQueryParameter("archived", isArchived.ToString().ToLowerInvariant())
                             .SetQueryParameter("offset", currentOffset.ToString())
@@ -443,7 +474,7 @@ public class DiscordClient(
                             var threadJson in response.Value.GetProperty("threads").EnumerateArray()
                         )
                         {
-                            var thread = Channel.Parse(threadJson, channel);
+                            var thread = Channel.Parse(threadJson, channel, currentOffset);
 
                             // If the 'after' boundary is specified, we can break early,
                             // because threads are sorted by last message timestamp.
@@ -466,33 +497,43 @@ public class DiscordClient(
                 }
             }
         }
-        // Bot accounts can only fetch threads using the threads endpoint
+        // Bot accounts can only fetch threads using the threads endpoints
         else
         {
+            // List to store all threads
+            var allThreads = new List<JsonElement>();
+
             var guilds = new HashSet<Snowflake>();
             foreach (var channel in filteredChannels)
                 guilds.Add(channel.GuildId);
 
+            var parentsById = filteredChannels.ToDictionary(c => c.Id);
+
             // Active threads
             foreach (var guildId in guilds)
             {
-                var parentsById = filteredChannels.ToDictionary(c => c.Id);
-
                 var response = await GetJsonResponseAsync(
                     $"guilds/{guildId}/threads/active",
                     cancellationToken
                 );
 
-                foreach (var threadJson in response.GetProperty("threads").EnumerateArray())
+                // Store them to sort them when we have all channels
+                if (relativePositions)
+                    allThreads.AddRange(response.GetProperty("threads").EnumerateArray());
+                // If we don't want relative positions, we can yield them now
+                else
                 {
-                    var parent = threadJson
-                        .GetPropertyOrNull("parent_id")
-                        ?.GetNonWhiteSpaceStringOrNull()
-                        ?.Pipe(Snowflake.Parse)
-                        .Pipe(parentsById.GetValueOrDefault);
+                    foreach (var threadJson in response.GetProperty("threads").EnumerateArray())
+                    {
+                        var parent = threadJson
+                            .GetPropertyOrNull("parent_id")
+                            ?.GetNonWhiteSpaceStringOrNull()
+                            ?.Pipe(Snowflake.Parse)
+                            .Pipe(parentsById.GetValueOrDefault);
 
-                    if (filteredChannels.Contains(parent))
-                        yield return Channel.Parse(threadJson, parent);
+                        if (filteredChannels.Contains(parent))
+                            yield return Channel.Parse(threadJson, parent);
+                    }
                 }
             }
 
@@ -521,14 +562,22 @@ public class DiscordClient(
                             if (response is null)
                                 break;
 
+                            if (relativePositions)
+                                allThreads.AddRange(
+                                    response.Value.GetProperty("threads").EnumerateArray()
+                                );
+
                             foreach (
                                 var threadJson in response
                                     .Value.GetProperty("threads")
                                     .EnumerateArray()
                             )
                             {
-                                var thread = Channel.Parse(threadJson, channel);
-                                yield return thread;
+                                // If we don't want relative positions, we can yield them now
+                                if (!relativePositions)
+                                {
+                                    yield return Channel.Parse(threadJson, channel);
+                                }
 
                                 currentBefore = threadJson
                                     .GetProperty("thread_metadata")
@@ -540,6 +589,40 @@ public class DiscordClient(
                                 break;
                         }
                     }
+                }
+            }
+
+            // Now we can sort all threads
+            if (relativePositions)
+            {
+                var sortedThreads = allThreads
+                    .OrderBy(t =>
+                        t.GetProperty("parent_id").GetNonWhiteSpaceString().Pipe(Snowflake.Parse)
+                    )
+                    .ThenBy(t => t.GetProperty("id").GetNonWhiteSpaceString().Pipe(Snowflake.Parse))
+                    .ToArray();
+
+                var threadPosition = 1;
+                Channel? previous_parent = null;
+
+                foreach (var threadJson in sortedThreads)
+                {
+                    var parent = threadJson
+                        .GetPropertyOrNull("parent_id")
+                        ?.GetNonWhiteSpaceStringOrNull()
+                        ?.Pipe(Snowflake.Parse)
+                        .Pipe(parentsById.GetValueOrDefault);
+
+                    if (parent != previous_parent)
+                    {
+                        previous_parent = parent;
+                        threadPosition = 1;
+                    }
+                    else
+                        threadPosition++;
+
+                    if (filteredChannels.Contains(parent))
+                        yield return Channel.Parse(threadJson, parent, threadPosition);
                 }
             }
         }

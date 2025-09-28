@@ -59,6 +59,7 @@ public class ExportAllCommand : ExportCommandBase
                             await foreach (
                                 var channel in Discord.GetGuildChannelsAsync(
                                     guild.Id,
+                                    RelativePositions,
                                     cancellationToken
                                 )
                             )

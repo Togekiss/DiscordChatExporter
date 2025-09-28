@@ -56,6 +56,12 @@ public abstract class ExportCommandBase : DiscordCommandBase
     public Snowflake? Before { get; init; }
 
     [CommandOption(
+        "relative-positions",
+        Description = "Get the position of channels in their category, not in the server as a whole."
+    )]
+    public bool RelativePositions { get; init; } = false;
+
+    [CommandOption(
         "partition",
         'p',
         Description = "Split the output into partitions, each limited to the specified "
@@ -180,6 +186,7 @@ public abstract class ExportCommandBase : DiscordCommandBase
                                 ThreadInclusionMode == ThreadInclusionMode.All,
                                 Before,
                                 After,
+                                RelativePositions,
                                 cancellationToken
                             )
                         )
@@ -277,6 +284,7 @@ public abstract class ExportCommandBase : DiscordCommandBase
                                     await Exporter.ExportChannelAsync(
                                         request,
                                         progress.ToPercentageBased(),
+                                        RelativePositions,
                                         innerCancellationToken
                                     );
                                 }

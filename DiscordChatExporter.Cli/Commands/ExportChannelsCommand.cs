@@ -36,16 +36,23 @@ public class ExportChannelsCommand : ExportCommandBase
         {
             var channel = await Discord.GetChannelAsync(channelId, cancellationToken);
 
-            // Unwrap categories
-            if (channel.IsCategory)
+            // Unwrap categories or find relative position of channel
+            if (channel.IsCategory || RelativePositions)
             {
                 var guildChannels =
                     channelsByGuild.GetValueOrDefault(channel.GuildId)
-                    ?? await Discord.GetGuildChannelsAsync(channel.GuildId, cancellationToken);
+                    ?? await Discord.GetGuildChannelsAsync(
+                        channel.GuildId,
+                        RelativePositions,
+                        cancellationToken
+                    );
 
                 foreach (var guildChannel in guildChannels)
                 {
-                    if (guildChannel.Parent?.Id == channel.Id)
+                    if (channel.IsCategory && guildChannel.Parent?.Id == channel.Id)
+                        channels.Add(guildChannel);
+                    // Get the same channel, but with the correct position
+                    else if (RelativePositions && guildChannel.Id == channel.Id)
                         channels.Add(guildChannel);
                 }
 
