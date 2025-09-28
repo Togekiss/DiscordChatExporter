@@ -182,7 +182,16 @@ If any of the folders in the path have a space in its name, escape them with quo
 ./DiscordChatExporter.Cli export -t "mfa.Ifrn" -c 53555 -o "C:\Discord Exports\myserver.html"
 ```
 
-Assuming you are exporting a channel named `"my-channel"` in the `"Text channels"` category from a server called `"My server"`, you will get the following output file path: `C:\Discord Exports\My server\Text channels\my-channel.html`
+### Generating the filename and output directory dynamically
+
+You can use template tokens to generate the output file path based on the server and channel metadata.
+
+```console
+./DiscordChatExporter.Cli export -t "mfa.Ifrn" -c 53555 -o "C:\Discord Exports\%G\%T\%C.html"
+```
+
+Assuming you are exporting a channel named `"my-channel"` in the `"Text channels"` category from a server called `"My server"`, you will get the following output file
+path: `C:\Discord Exports\My server\Text channels\my-channel.html`
 
 Here is the full list of supported template tokens:
 
