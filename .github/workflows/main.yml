@@ -104,16 +104,11 @@ jobs:
           --runtime ${{ matrix.rid }}
           --self-contained
 
-      - name: Package for artifact
-        run: |
-          cd ${{ matrix.app }}/bin/publish
-          zip -r ../../${{ matrix.asset }}.${{ matrix.rid }}.zip .
-
       - name: Upload app binaries
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}.${{ matrix.rid }}
-          path: ${{ matrix.app }}/${{ matrix.asset }}.${{ matrix.rid }}.zip
+          path: ${{ matrix.app }}/bin/publish/
           if-no-files-found: error
 
 
@@ -152,9 +147,12 @@ jobs:
           - app: DiscordChatExporter.Cli
             asset: DiscordChatExporter.Cli
           - app: DiscordChatExporter.Gui
+            # GUI assets aren't suffixed, unlike the CLI assets
             asset: DiscordChatExporter
 
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     permissions:
       actions: read
       contents: write
@@ -164,7 +162,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.asset }}.${{ matrix.rid }}
-          path: .
+          path: ${{ matrix.app }}/
+
 
       - name: Upload release asset
         env:
