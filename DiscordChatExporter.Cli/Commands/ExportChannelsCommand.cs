@@ -52,7 +52,11 @@ public class ExportChannelsCommand : ExportCommandBase
                     if (channel.IsCategory && guildChannel.Parent?.Id == channel.Id)
                         channels.Add(guildChannel);
                     // Get the same channel, but with the correct position
-                    else if (RelativePositions && guildChannel.Id == channel.Id)
+                    else if (
+                        !channel.IsCategory
+                        && RelativePositions
+                        && guildChannel.Id == channel.Id
+                    )
                         channels.Add(guildChannel);
                 }
 
