@@ -50,42 +50,7 @@ jobs:
         if: ${{ failure() && steps.verify.outcome == 'failure' }}
         run: echo "::error title=Bad formatting::Formatting issues detected. Please build the solution locally to fix them."
   
-  test-DISABLED:
-    # Tests need access to a particular Discord server I do not have access to, so disabled for now
-    # Tests need access to secrets, so we can't run them against PRs because of limited trust
-    # if: ${{ github.event_name != 'pull_request' }}
-    if: false
-
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Install .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-
-      - name: Run tests
-        env:
-          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
-        run: >
-          dotnet test
-          -p:CSharpier_Bypass=true
-          --configuration Release
-          --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"
-          --collect:"XPlat Code Coverage"
-          --
-          RunConfiguration.CollectSourceInformation=true
-          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+  # Tests need access to a particular Discord server I do not have access to, so I got rid of them for now
 
   pack:
     strategy:
@@ -135,17 +100,18 @@ jobs:
           --runtime ${{ matrix.rid }}
           --self-contained
 
-      - name: Rename macOS bundle
-        if: ${{ startsWith(matrix.rid, 'osx-') && matrix.app == 'DiscordChatExporter.Gui' }}
-        run: >
-          mv ${{ matrix.app }}/bin/publish/DCE.app ${{ matrix.app }}/bin/publish/${{ matrix.asset }}.app
+      - name: Package for artifact
+        run: |
+          cd ${{ matrix.app }}/bin/publish
+          zip -r ../../${{ matrix.asset }}.${{ matrix.rid }}.zip .
 
       - name: Upload app binaries
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}.${{ matrix.rid }}
-          path: ${{ matrix.app }}/bin/publish/
+          path: ${{ matrix.app }}/${{ matrix.asset }}.${{ matrix.rid }}.zip
           if-no-files-found: error
+
 
   release:
     if: ${{ github.ref_type == 'tag' }}
@@ -174,55 +140,27 @@ jobs:
 
   deploy:
     needs: release
-
     strategy:
       matrix:
-        app:
-          - DiscordChatExporter.Cli
-          - DiscordChatExporter.Gui
-        rid:
-          - win-arm64
-          - win-x86
-          - win-x64
-          - linux-arm
-          - linux-arm64
-          - linux-musl-x64
-          - linux-x64
-          - osx-arm64
-          - osx-x64
+        app: [DiscordChatExporter.Cli, DiscordChatExporter.Gui]
+        rid: [win-arm64, win-x86, win-x64, linux-arm, linux-arm64, linux-musl-x64, linux-x64, osx-arm64, osx-x64]
         include:
           - app: DiscordChatExporter.Cli
             asset: DiscordChatExporter.Cli
           - app: DiscordChatExporter.Gui
-            # GUI assets aren't suffixed, unlike the CLI assets
             asset: DiscordChatExporter
 
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
     permissions:
       actions: read
       contents: write
 
     steps:
-      - name: Download app binaries
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - name: Download packaged zip
+        uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.asset }}.${{ matrix.rid }}
-          path: ${{ matrix.app }}/
-
-      - name: Set permissions
-        if: ${{ !startsWith(matrix.rid, 'win-') }}
-        run: |
-          [ -f ${{ matrix.app }}/${{ matrix.asset }} ] && chmod +x ${{ matrix.app }}/${{ matrix.asset }} || true
-
-          # macOS bundle
-          [ -f ${{ matrix.app }}/${{ matrix.asset }}.app/Contents/MacOS/${{ matrix.asset }} ] && chmod +x ${{ matrix.app }}/${{ matrix.asset }}.app/Contents/MacOS/${{ matrix.asset }} || true
-
-      - name: Create package
-        # Change into the artifacts directory to avoid including the directory itself in the zip archive
-        working-directory: ${{ matrix.app }}/
-        run: zip -r ../${{ matrix.asset }}.${{ matrix.rid }}.zip .
+          path: .
 
       - name: Upload release asset
         env:
@@ -232,28 +170,18 @@ jobs:
           ${{ matrix.asset }}.${{ matrix.rid }}.zip
           --repo ${{ github.event.repository.full_name }}
 
-  notify-DISABLED:
-
-    if: false
-    
-    needs: deploy
+  gather:
+    needs: pack
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    permissions:
-      contents: read
-
     steps:
-      - name: Notify Discord
-        uses: tyrrrz/action-http-request@110f1a0f0f7e91c3b2de349539249f4573c243fa # 1.1.5
+      - uses: actions/download-artifact@v4
         with:
-          url: ${{ secrets.DISCORD_WEBHOOK }}
-          method: POST
-          headers: |
-            Content-Type: application/json; charset=UTF-8
-          body: |
-            {
-              "avatar_url": "https://raw.githubusercontent.com/${{ github.event.repository.full_name }}/${{ github.ref_name }}/favicon.png",
-              "content": "[**${{ github.event.repository.name }}**](<${{ github.event.repository.html_url }}>) v${{ github.ref_name }} has been released!"
-            }
-          retry-count: 5
+          path: dist
+      - run: ls -R dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DiscordChatExporter-all
+          path: dist
+
+
+
