@@ -40,7 +40,11 @@ public class GetChannelsCommand : DiscordCommandBase
         var cancellationToken = console.RegisterCancellationHandler();
 
         // Improve compatibility with feat/include-categories
-        var allChannels = await Discord.GetGuildChannelsAsync(GuildId, RelativePositions, cancellationToken);
+        var allChannels = await Discord.GetGuildChannelsAsync(
+            GuildId,
+            RelativePositions,
+            cancellationToken
+        );
 
         // We have to split the query in two parts:
         var query = allChannels
