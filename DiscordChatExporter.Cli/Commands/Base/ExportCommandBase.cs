@@ -68,7 +68,7 @@ public abstract class ExportCommandBase : DiscordCommandBase
         Description = "Which types of threads should be included.",
         Converter = typeof(ThreadInclusionModeInputConverter)
     )]
-    public ThreadInclusionMode ThreadInclusionMode { get; init; } = ThreadInclusionMode.None;
+    public ThreadInclusionMode ThreadInclusionMode { get; set; } = ThreadInclusionMode.None;
 
     [CommandOption(
         "threads-output",
@@ -248,28 +248,6 @@ public abstract class ExportCommandBase : DiscordCommandBase
             unwrappedChannels.RemoveAll(channel => channel.Kind == ChannelKind.GuildForum);
 
             await console.Output.WriteLineAsync($"Fetched {fetchedThreadsCount} thread(s).");
-        }
-
-        // Make sure the user does not try to export multiple channels into one file.
-        // Output path must either be a directory or contain template tokens for this to work.
-        // https://github.com/Tyrrrz/DiscordChatExporter/issues/799
-        // https://github.com/Tyrrrz/DiscordChatExporter/issues/917
-        var isValidOutputPath =
-            // Anything is valid when exporting a single channel
-            unwrappedChannels.Count <= 1
-            // When using template tokens, assume the user knows what they're doing
-            || OutputPath.Contains('%')
-            // Otherwise, require an existing directory or an unambiguous directory path
-            || Directory.Exists(OutputPath)
-            || Path.EndsInDirectorySeparator(OutputPath);
-
-        if (!isValidOutputPath)
-        {
-            throw new CommandException(
-                "Attempted to export multiple channels, but the output path is neither a directory nor a template. "
-                    + "If the provided output path is meant to be treated as a directory, make sure it ends with a slash. "
-                    + $"Provided output path: '{OutputPath}'."
-            );
         }
 
         if (ThreadsOutputPath != null)
