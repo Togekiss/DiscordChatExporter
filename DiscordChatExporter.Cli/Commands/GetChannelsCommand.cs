@@ -21,7 +21,7 @@ public partial class GetChannelsCommand : DiscordCommandBase
         "relative-positions",
         Description = "Sort channels in the order they appear in Discord."
     )]
-    public bool RelativePositions { get; init; } = false;
+    public bool RelativePositions { get; set; } = false;
 
     [CommandOption("include-vc", Description = "Include voice channels.")]
     public bool IncludeVoiceChannels { get; set; } = true;

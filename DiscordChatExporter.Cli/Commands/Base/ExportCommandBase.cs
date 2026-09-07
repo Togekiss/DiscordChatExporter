@@ -59,7 +59,7 @@ public abstract class ExportCommandBase : DiscordCommandBase
         "relative-positions",
         Description = "Get the position of channels in their category, not in the server as a whole."
     )]
-    public bool RelativePositions { get; init; } = false;
+    public bool RelativePositions { get; set; } = false;
 
     [CommandOption(
         "partition",
