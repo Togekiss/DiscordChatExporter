@@ -31,13 +31,7 @@ public partial class GetChannelsCommand : DiscordCommandBase
         "include-categories",
         Description = "Include categories and their IDs in the output."
     )]
-    public bool IncludeCategories { get; init; } = false;
-
-    [CommandOption(
-        "include-categories",
-        Description = "Include categories and their IDs in the output."
-    )]
-    public bool IncludeCategories { get; init; } = false;
+    public bool IncludeCategories { get; set; } = false;
 
     public override async ValueTask ExecuteAsync(IConsole console)
     {
