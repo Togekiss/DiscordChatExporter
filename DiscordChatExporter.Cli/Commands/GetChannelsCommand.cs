@@ -64,7 +64,7 @@ public partial class GetChannelsCommand : DiscordCommandBase
         var channels = (
             RelativePositions ? query.ThenBy(c => c.Position) : query.OrderBy(c => c.Name)
         ).ToArray();
-        
+
         var channelIdMaxLength = channels
             .Select(c => c.Id.ToString().Length)
             .OrderDescending()
