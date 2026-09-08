@@ -17,6 +17,12 @@ public partial class GetChannelsCommand : DiscordCommandBase
     [CommandOption("guild", 'g', Description = "Server ID.")]
     public required Snowflake GuildId { get; set; }
 
+    [CommandOption(
+        "relative-positions",
+        Description = "Sort channels in the order they appear in Discord."
+    )]
+    public bool RelativePositions { get; set; } = false;
+
     [CommandOption("include-vc", Description = "Include voice channels.")]
     public bool IncludeVoiceChannels { get; set; } = true;
 
@@ -39,18 +45,26 @@ public partial class GetChannelsCommand : DiscordCommandBase
 
         var cancellationToken = console.RegisterCancellationHandler();
 
-        // Fetch channels only once
-        var allChannels = await Discord.GetGuildChannelsAsync(GuildId, cancellationToken);
+        // Improve compatibility with feat/include-categories
+        var allChannels = await Discord.GetGuildChannelsAsync(
+            GuildId,
+            RelativePositions,
+            cancellationToken
+        );
 
         var categories = allChannels.Where(c => c.IsCategory).OrderBy(c => c.Position).ToArray();
 
-        var channels = allChannels
+        // We have to split the query in two parts:
+        var query = allChannels
             .Where(c => !c.IsCategory)
             .Where(c => IncludeVoiceChannels || !c.IsVoice)
-            .OrderBy(c => c.Parent?.Position)
-            .ThenBy(c => c.Name)
-            .ToArray();
+            .OrderBy(c => c.Parent?.Position);
 
+        // Sort by position if --relative-positions, else sort by name as usual
+        var channels = (
+            RelativePositions ? query.ThenBy(c => c.Position) : query.OrderBy(c => c.Name)
+        ).ToArray();
+        
         var channelIdMaxLength = channels
             .Select(c => c.Id.ToString().Length)
             .OrderDescending()
@@ -64,10 +78,13 @@ public partial class GetChannelsCommand : DiscordCommandBase
                         ThreadInclusionMode == ThreadInclusionMode.All,
                         null,
                         null,
+                        RelativePositions,
                         cancellationToken
                     )
                 )
-                    .OrderBy(c => c.Name)
+                    .Pipe(q =>
+                        RelativePositions ? q.OrderBy(t => t.Position) : q.OrderBy(t => t.Name)
+                    )
                     .ToArray()
                 : [];
 
