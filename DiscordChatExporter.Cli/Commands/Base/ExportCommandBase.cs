@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -81,7 +81,7 @@ public abstract class ExportCommandBase : DiscordCommandBase
         get;
         // Handle ~/ in paths on Unix systems
         // https://github.com/Tyrrrz/DiscordChatExporter/pull/903
-        init => field = value is not null ? Path.GetFullPath(value) : null;
+        set => field = value is not null ? Path.GetFullPath(value) : null;
     }
 
     [CommandOption(
