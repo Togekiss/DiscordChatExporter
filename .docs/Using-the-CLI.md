@@ -202,7 +202,7 @@ Here is the full list of supported template tokens:
 
 By default, threads will follow the same output path as all channels, either following the default or the path set with `-o`.
 
-But note that if the channel being imported is a thread, some template tokens will resolve differently:
+But note that if the channel being exported is a thread, some template tokens will resolve differently:
 
 - `%m` - category ID
 - `%M` - category name
