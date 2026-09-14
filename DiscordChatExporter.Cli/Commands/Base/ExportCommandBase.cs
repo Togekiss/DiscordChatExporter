@@ -74,7 +74,7 @@ public abstract class ExportCommandBase : DiscordCommandBase
         "threads-output",
         Description = "Output file or directory path of threads. "
             + "See --output for formatting instructions. "
-            + "If not specified, threads will be exported to the same directory as other channels. "
+            + "If not specified, threads will use the same output path template as other channels. "
     )]
     public string? ThreadsOutputPath
     {
