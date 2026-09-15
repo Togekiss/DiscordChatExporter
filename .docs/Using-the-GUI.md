@@ -89,6 +89,12 @@ In this screen you can customize the following:
 - **Persist token** - Persist last used token between sessions.
   Default: Enabled
 
+- **Show positions** - See or hide the position numbers in the channel list.
+  Default: Disabled
+
+- **Relative positions** - Use relative positions (start from 1 in each category) instead of server-wide positions. Reload a server to apply.
+  Default: Disabled
+
 - **Show threads** - Controls whether threads are shown in the channel list.
   Default: none
 
