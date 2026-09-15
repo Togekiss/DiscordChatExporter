@@ -45,24 +45,26 @@ public partial class GetChannelsCommand : DiscordCommandBase
 
         var cancellationToken = console.RegisterCancellationHandler();
 
-        // Improve compatibility with feat/include-categories
-        var allChannels = await Discord.GetGuildChannelsAsync(
+        // Get list of channels
+        var unsortedChannels = await Discord.GetGuildChannelsAsync(
             GuildId,
             RelativePositions,
             cancellationToken
         );
 
-        var categories = allChannels.Where(c => c.IsCategory).OrderBy(c => c.Position).ToArray();
+        var categories = unsortedChannels.Where(c => c.IsCategory).OrderBy(c => c.Position).ToArray();
 
-        // We have to split the query in two parts:
-        var query = allChannels
+        // We have to split the query in two parts, this is the shared one
+        var sortedChannels = unsortedChannels
             .Where(c => !c.IsCategory)
             .Where(c => IncludeVoiceChannels || !c.IsVoice)
             .OrderBy(c => c.Parent?.Position);
 
         // Sort by position if --relative-positions, else sort by name as usual
         var channels = (
-            RelativePositions ? query.ThenBy(c => c.Position) : query.OrderBy(c => c.Name)
+            RelativePositions
+                ? sortedChannels.ThenBy(c => c.Position)
+                : sortedChannels.ThenBy(c => c.Name)
         ).ToArray();
 
         var channelIdMaxLength = channels

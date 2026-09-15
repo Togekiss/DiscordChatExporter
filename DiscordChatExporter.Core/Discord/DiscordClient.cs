@@ -281,6 +281,8 @@ public class DiscordClient(
                 cancellationToken
             );
 
+            // each type of channel (category, voice, text) has its own position counter,
+            // so two channels can have the same position
             var channelsJson = response
                 .EnumerateArray()
                 .OrderBy(j => j.GetProperty("position").GetInt32())
@@ -289,6 +291,7 @@ public class DiscordClient(
 
             // When using --relative-positions, sort channels by parent
             // to ensure the next step works.
+            // it also puts all categories at the head cause their parent is null
             if (relativePositions)
                 channelsJson = response
                     .EnumerateArray()
@@ -297,6 +300,7 @@ public class DiscordClient(
                             .GetNonWhiteSpaceStringOrNull()
                             ?.Pipe(Snowflake.Parse)
                     )
+                    .ThenBy(j => j.GetProperty("type").GetInt32())
                     .ThenBy(j => j.GetProperty("position").GetInt32())
                     .ToArray();
 
@@ -307,8 +311,7 @@ public class DiscordClient(
 
             // Discord channel positions are relative to channel type, so we need to normalize them
             // so that the user may refer to them more easily in file name templates.
-            // --relative-positions makes positions start at 1 to be more human-readable
-            var position = relativePositions ? 1 : 0;
+            var position = 0;
             Channel? previous_parent = null;
 
             foreach (var channelJson in channelsJson)
@@ -319,7 +322,8 @@ public class DiscordClient(
                     ?.Pipe(Snowflake.Parse)
                     .Pipe(parentsById.GetValueOrDefault);
 
-                // This is why we had to sort by parent before
+                // Since we sorted by parent before, we can tell when
+                // we are in a new category and reset the position counter.
                 if (parent != previous_parent && relativePositions)
                 {
                     previous_parent = parent;
@@ -491,7 +495,7 @@ public class DiscordClient(
                     {
                         var url = new UrlBuilder()
                             .SetPath($"channels/{channel.Id}/threads/search")
-                            // I can't test this, but I'm guessing this will be ok
+                            // This couldn't be tested without breaking TOS, so if it doesn't work just don't use it
                             .SetQueryParameter(
                                 "sort_by",
                                 relativePositions ? "id" : "last_message_time"
