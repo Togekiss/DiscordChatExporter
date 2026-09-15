@@ -17,9 +17,12 @@ public partial class GetChannelsCommand : DiscordCommandBase
     [CommandOption("guild", 'g', Description = "Server ID.")]
     public required Snowflake GuildId { get; set; }
 
+    [CommandOption("show-positions", Description = "Show position numbers in the channel list.")]
+    public bool ShowPositions { get; set; } = false;
+
     [CommandOption(
         "relative-positions",
-        Description = "Sort channels in the order they appear in Discord."
+        Description = "Sort channels in the order they appear in Discord, and reset positions for each category."
     )]
     public bool RelativePositions { get; set; } = false;
 
@@ -52,7 +55,10 @@ public partial class GetChannelsCommand : DiscordCommandBase
             cancellationToken
         );
 
-        var categories = unsortedChannels.Where(c => c.IsCategory).OrderBy(c => c.Position).ToArray();
+        var categories = unsortedChannels
+            .Where(c => c.IsCategory)
+            .OrderBy(c => c.Position)
+            .ToArray();
 
         // We have to split the query in two parts, this is the shared one
         var sortedChannels = unsortedChannels
@@ -69,6 +75,11 @@ public partial class GetChannelsCommand : DiscordCommandBase
 
         var channelIdMaxLength = channels
             .Select(c => c.Id.ToString().Length)
+            .OrderDescending()
+            .FirstOrDefault();
+
+        var maxChannelPositionLength = channels
+            .Select(c => c.Position?.ToString().Length ?? 0)
             .OrderDescending()
             .FirstOrDefault();
 
@@ -106,6 +117,18 @@ public partial class GetChannelsCommand : DiscordCommandBase
                 using (console.WithForegroundColor(ConsoleColor.DarkGray))
                     await console.Output.WriteAsync(" \\ ");
 
+                if (ShowPositions)
+                {
+                    // Category position
+                    using (console.WithForegroundColor(ConsoleColor.DarkGray))
+                        await console.Output.WriteAsync(
+                            (category.Position.ToString() + "#").PadRight(
+                                maxChannelPositionLength + 2,
+                                ' '
+                            )
+                        );
+                }
+
                 // Category name
                 using (console.WithForegroundColor(ConsoleColor.White))
                     await console.Output.WriteLineAsync($"{category.Name}");
@@ -126,6 +149,18 @@ public partial class GetChannelsCommand : DiscordCommandBase
                 // Separator
                 using (console.WithForegroundColor(ConsoleColor.DarkGray))
                     await console.Output.WriteAsync(" | ");
+
+                if (ShowPositions)
+                {
+                    // Channel position
+                    using (console.WithForegroundColor(ConsoleColor.DarkGray))
+                        await console.Output.WriteAsync(
+                            (channel.Position.ToString() + "#").PadRight(
+                                maxChannelPositionLength + 2,
+                                ' '
+                            )
+                        );
+                }
 
                 // Channel name
                 using (console.WithForegroundColor(ConsoleColor.White))
@@ -150,6 +185,18 @@ public partial class GetChannelsCommand : DiscordCommandBase
                     // Separator
                     using (console.WithForegroundColor(ConsoleColor.DarkGray))
                         await console.Output.WriteAsync(" | ");
+
+                    if (ShowPositions)
+                    {
+                        // Thread position
+                        using (console.WithForegroundColor(ConsoleColor.DarkGray))
+                            await console.Output.WriteAsync(
+                                (channelThread.Position.ToString() + "#").PadRight(
+                                    maxChannelPositionLength + 2,
+                                    ' '
+                                )
+                            );
+                    }
 
                     // Thread name
                     using (console.WithForegroundColor(ConsoleColor.White))
