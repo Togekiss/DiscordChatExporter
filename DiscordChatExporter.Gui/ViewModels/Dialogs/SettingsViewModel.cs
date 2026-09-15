@@ -62,6 +62,18 @@ public class SettingsViewModel : DialogViewModelBase
         set => _settingsService.IsTokenPersisted = value;
     }
 
+    public bool ShowPositions
+    {
+        get => _settingsService.ShowPositions;
+        set => _settingsService.ShowPositions = value;
+    }
+
+    public bool RelativePositions
+    {
+        get => _settingsService.RelativePositions;
+        set => _settingsService.RelativePositions = value;
+    }
+
     public IReadOnlyList<RateLimitPreference> AvailableRateLimitPreferences { get; } =
         Enum.GetValues<RateLimitPreference>();
 

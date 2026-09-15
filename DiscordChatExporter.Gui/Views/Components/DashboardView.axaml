@@ -163,7 +163,7 @@
                 <Grid
                   Background="Transparent"
                   Classes.category="{Binding Channel.IsCategory}"
-                  ColumnDefinitions="Auto,*,Auto"
+                  ColumnDefinitions="Auto,Auto,*,Auto"
                   DoubleTapped="ChannelGrid_OnDoubleTapped"
                 >
                   <Grid.Styles>
@@ -184,9 +184,20 @@
                     </Style>
                   </Grid.Styles>
 
+                  <!--  Channel position  -->
+                  <TextBlock
+                    Grid.Column="0"
+                    Margin="0,0,6,0"
+                    VerticalAlignment="Center"
+                    FontSize="14"
+                    Opacity="0.7"
+                    Text="{Binding Channel.Position}"
+                    IsVisible="{Binding #UserControl.DataContext.SettingsService.ShowPositions}"
+                  />
+
                   <!--  Channel icon  -->
                   <materialIcons:MaterialIcon
-                    Grid.Column="0"
+                    Grid.Column="1"
                     Margin="0,0,4,0"
                     Classes.voice="{Binding Channel.IsVoice}"
                     IsVisible="{Binding !Channel.IsCategory}"
@@ -204,7 +215,7 @@
 
                   <!--  Channel name  -->
                   <TextBlock
-                    Grid.Column="1"
+                    Grid.Column="2"
                     Margin="0,12"
                     FontSize="14"
                     Text="{Binding Channel.Name, Mode=OneWay}"
@@ -212,7 +223,7 @@
 
                   <!--  Checkmark  -->
                   <materialIcons:MaterialIcon
-                    Grid.Column="2"
+                    Grid.Column="3"
                     Width="24"
                     Height="24"
                     Margin="16,0"

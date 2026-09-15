@@ -29,6 +29,12 @@ public partial class SettingsService()
     public partial bool IsTokenPersisted { get; set; } = true;
 
     [ObservableProperty]
+    public partial bool ShowPositions { get; set; }
+
+    [ObservableProperty]
+    public partial bool RelativePositions { get; set; }
+
+    [ObservableProperty]
     public partial RateLimitPreference RateLimitPreference { get; set; } =
         RateLimitPreference.RespectAll;
 
