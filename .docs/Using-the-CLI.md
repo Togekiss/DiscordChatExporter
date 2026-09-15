@@ -346,7 +346,11 @@ This command accepts more parameters:
 - `--include-vc` - whether to include voice channels. Defaults to `true`.
 - `--include-threads` - whether to include all or active threads. Defaults to `none`.
 - `--relative-positions` - sort channels like they would in Discord, instead of alphabetically. Defaults to `false`.
+- `--show-positions` - show position numbers in the channel list. Defaults to `false`.
 
+> Note: When using `--show-positions` on its own, you will see absolute positions that are calculated across the whole server.
+>
+> When using `--show-positions --relative-positions`, positions are calculated per category, starting from 1 in each.
 
 ### List direct message channels
 
