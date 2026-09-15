@@ -70,6 +70,8 @@ public partial class DashboardViewModel : ViewModelBase
 
     public LocalizationManager LocalizationManager { get; }
 
+    public SettingsService SettingsService => _settingsService;
+
     public ProgressContainer<Percentage> Progress { get; } = new();
 
     public bool IsProgressIndeterminate => IsBusy && Progress.Current.Fraction is <= 0 or >= 1;
@@ -171,7 +173,12 @@ public partial class DashboardViewModel : ViewModelBase
             var channels = new List<Channel>();
 
             // Regular channels
-            await foreach (var channel in _discord.GetGuildChannelsAsync(SelectedGuild.Id))
+            await foreach (
+                var channel in _discord.GetGuildChannelsAsync(
+                    SelectedGuild.Id,
+                    _settingsService.RelativePositions
+                )
+            )
                 channels.Add(channel);
 
             // Threads
@@ -180,7 +187,8 @@ public partial class DashboardViewModel : ViewModelBase
                 await foreach (
                     var thread in _discord.GetGuildThreadsAsync(
                         SelectedGuild.Id,
-                        _settingsService.ThreadInclusionMode == ThreadInclusionMode.All
+                        _settingsService.ThreadInclusionMode == ThreadInclusionMode.All,
+                        relativePositions: _settingsService.RelativePositions
                     )
                 )
                 {

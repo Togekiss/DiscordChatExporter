@@ -56,6 +56,12 @@ public partial class LocalizationManager
                 Save the last used token to a file so that it can be persisted between sessions.
                 **Warning**: although the token is stored with encryption, it may still be recovered by an attacker who has access to your system.
                 """,
+            [nameof(ShowPositionsLabel)] = "Show positions",
+            [nameof(ShowPositionsTooltip)] =
+                "See or hide the position numbers in the channel list.",
+            [nameof(RelativePositionsLabel)] = "Relative positions",
+            [nameof(RelativePositionsTooltip)] =
+                "Use relative positions (start from 1 in each category) instead of server-wide positions.",
             [nameof(RateLimitPreferenceLabel)] = "Rate limit preference",
             [nameof(RateLimitPreferenceTooltip)] =
                 "Whether to respect advisory rate limits. If disabled, only hard rate limits (i.e., 429 responses) will be respected.",

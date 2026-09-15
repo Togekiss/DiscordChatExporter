@@ -58,6 +58,12 @@ public partial class LocalizationManager
             Den zuletzt verwendeten Token in einer Datei speichern, damit er zwischen Sitzungen erhalten bleibt.
             **Warnung**: Der Token wird mit Verschlüsselung gespeichert, kann aber dennoch von einem Angreifer mit Zugriff auf Ihr System wiederhergestellt werden.
             """,
+        [nameof(ShowPositionsLabel)] = "Positionen anzeigen",
+        [nameof(ShowPositionsTooltip)] =
+            "Anzeigen oder Ausblenden der Positionsnummern in der Kanalliste.",
+        [nameof(RelativePositionsLabel)] = "Relative Positionen",
+        [nameof(RelativePositionsTooltip)] =
+            "Relative Positionen verwenden (beginnend bei 1 für jede Kategorie) anstelle von serverweiten Positionen.",
         [nameof(RateLimitPreferenceLabel)] = "Ratenlimit-Einstellung",
         [nameof(RateLimitPreferenceTooltip)] =
             "Ob empfohlene Ratenlimits eingehalten werden sollen. Wenn deaktiviert, werden nur harte Ratenlimits (d. h. 429-Antworten) eingehalten.",

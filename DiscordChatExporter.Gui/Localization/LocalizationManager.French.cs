@@ -58,6 +58,12 @@ public partial class LocalizationManager
             Enregistrer le dernier token utilisé dans un fichier pour le conserver entre les sessions.
             **Avertissement** : bien que le token soit stocké avec chiffrement, il peut toujours être récupéré par un attaquant ayant accès à votre système.
             """,
+        [nameof(ShowPositionsLabel)] = "Afficher les positions",
+        [nameof(ShowPositionsTooltip)] =
+            "Afficher ou masquer les numéros de position dans la liste des canaux.",
+        [nameof(RelativePositionsLabel)] = "Positions relatives",
+        [nameof(RelativePositionsTooltip)] =
+            "Utiliser les positions relatives (commençant à 1 pour chaque catégorie) au lieu des positions globales.",
         [nameof(RateLimitPreferenceLabel)] = "Préférence de limite de débit",
         [nameof(RateLimitPreferenceTooltip)] =
             "Indique s'il faut respecter les limites de débit recommandées. Si désactivé, seules les limites strictes (réponses 429) seront respectées.",

@@ -75,6 +75,38 @@
             <ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding IsTokenPersisted}" />
           </DockPanel>
 
+          <!--  Show positions  -->
+          <DockPanel LastChildFill="False">
+            <ToolTip.Tip>
+              <TextBlock
+                MaxWidth="400"
+                Inlines="{Binding LocalizationManager.ShowPositionsTooltip, Converter={x:Static converters:MarkdownToInlinesConverter.Instance}}"
+                TextWrapping="Wrap"
+              />
+            </ToolTip.Tip>
+            <TextBlock
+              DockPanel.Dock="Left"
+              Text="{Binding LocalizationManager.ShowPositionsLabel}"
+            />
+            <ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding ShowPositions}" />
+          </DockPanel>
+
+          <!--  Relative positions  -->
+          <DockPanel LastChildFill="False">
+            <ToolTip.Tip>
+              <TextBlock
+                MaxWidth="400"
+                Inlines="{Binding LocalizationManager.RelativePositionsTooltip, Converter={x:Static converters:MarkdownToInlinesConverter.Instance}}"
+                TextWrapping="Wrap"
+              />
+            </ToolTip.Tip>
+            <TextBlock
+              DockPanel.Dock="Left"
+              Text="{Binding LocalizationManager.RelativePositionsLabel}"
+            />
+            <ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding RelativePositions}" />
+          </DockPanel>
+
           <!--  Rate limit preference  -->
           <DockPanel
             LastChildFill="False"
