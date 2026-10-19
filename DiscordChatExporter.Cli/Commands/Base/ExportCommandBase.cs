@@ -243,6 +243,7 @@ public abstract class ExportCommandBase : DiscordCommandBase
             // Export
             var errorsByChannel = new ConcurrentDictionary<Channel, string>();
             var warningsByChannel = new ConcurrentDictionary<Channel, string>();
+            var memberCachesByGuild = new ConcurrentDictionary<Snowflake, GuildMemberCache>();
 
             await console.Output.WriteLineAsync(
                 $"Exporting {unwrappedChannels.Count} channel(s)..."
@@ -277,6 +278,11 @@ public abstract class ExportCommandBase : DiscordCommandBase
                                             innerCancellationToken
                                         );
 
+                                        var memberCache = memberCachesByGuild.GetOrAdd(
+                                            channel.GuildId,
+                                            _ => new GuildMemberCache()
+                                        );
+
                                         var request = new ExportRequest(
                                             guild,
                                             channel,
@@ -298,6 +304,7 @@ public abstract class ExportCommandBase : DiscordCommandBase
                                         await Exporter.ExportChannelAsync(
                                             request,
                                             progress.ToPercentageBased(),
+                                            memberCache,
                                             innerCancellationToken
                                         );
                                     }

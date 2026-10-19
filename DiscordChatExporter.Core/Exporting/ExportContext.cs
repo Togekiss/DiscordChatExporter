@@ -13,9 +13,13 @@ using PowerKit.Extensions;
 
 namespace DiscordChatExporter.Core.Exporting;
 
-internal class ExportContext(DiscordClient discord, ExportRequest request)
+internal class ExportContext(
+    DiscordClient discord,
+    ExportRequest request,
+    GuildMemberCache? memberCache = null
+)
 {
-    private readonly Dictionary<Snowflake, Member?> _membersById = new();
+    private readonly GuildMemberCache _memberCache = memberCache ?? new();
     private readonly Dictionary<Snowflake, Channel?> _channelsById = new();
     private readonly Dictionary<Snowflake, Role> _rolesById = new();
 
@@ -73,24 +77,31 @@ internal class ExportContext(DiscordClient discord, ExportRequest request)
         CancellationToken cancellationToken = default
     )
     {
-        if (_membersById.ContainsKey(id))
+        if (_memberCache.TryGet(id, out _))
             return;
 
-        var member = await Discord.TryGetGuildMemberAsync(Request.Guild.Id, id, cancellationToken);
+        await _memberCache.GetOrAddAsync(
+            id,
+            async (userId, ct) =>
+            {
+                var member = await Discord.TryGetGuildMemberAsync(Request.Guild.Id, userId, ct);
 
-        // User may have left the guild since they were mentioned.
-        // Create a dummy member object based on the user info.
-        if (member is null)
-        {
-            var user = fallbackUser ?? await Discord.TryGetUserAsync(id, cancellationToken);
+                // User may have left the guild since they were mentioned.
+                // Create a dummy member object based on the user info.
+                if (member is null)
+                {
+                    var user = fallbackUser ?? await Discord.TryGetUserAsync(userId, ct);
 
-            // User may have been deleted since they were mentioned
-            if (user is not null)
-                member = Member.CreateFallback(user);
-        }
+                    // User may have been deleted since they were mentioned
+                    if (user is not null)
+                        member = Member.CreateFallback(user);
+                }
 
-        // Store the result even if it's null, to avoid re-fetching non-existing members
-        _membersById[id] = member;
+                // Store the result even if it's null, to avoid re-fetching non-existing members
+                return member;
+            },
+            cancellationToken
+        );
     }
 
     public async ValueTask PopulateMemberAsync(
@@ -103,7 +114,8 @@ internal class ExportContext(DiscordClient discord, ExportRequest request)
         CancellationToken cancellationToken = default
     ) => await PopulateMemberAsync(user.Id, user, cancellationToken);
 
-    public Member? TryGetMember(Snowflake id) => _membersById.GetValueOrDefault(id);
+    public Member? TryGetMember(Snowflake id) =>
+        _memberCache.TryGet(id, out var member) ? member : null;
 
     public Channel? TryGetChannel(Snowflake id) => _channelsById.GetValueOrDefault(id);
 

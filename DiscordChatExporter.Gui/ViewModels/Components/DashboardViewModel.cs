@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -241,6 +242,7 @@ public partial class DashboardViewModel : ViewModelBase
                 return;
 
             var exporter = new ChannelExporter(_discord);
+            var memberCachesByGuild = new ConcurrentDictionary<Snowflake, GuildMemberCache>();
 
             var channelProgressPairs = dialog
                 .Channels!.Select(c => new { Channel = c, Progress = _progressMuxer.CreateInput() })
@@ -261,6 +263,11 @@ public partial class DashboardViewModel : ViewModelBase
 
                     try
                     {
+                        var memberCache = memberCachesByGuild.GetOrAdd(
+                            dialog.Guild!.Id,
+                            _ => new GuildMemberCache()
+                        );
+
                         var request = new ExportRequest(
                             dialog.Guild!,
                             channel,
@@ -279,7 +286,12 @@ public partial class DashboardViewModel : ViewModelBase
                             _settingsService.IsUtcNormalizationEnabled
                         );
 
-                        await exporter.ExportChannelAsync(request, progress, cancellationToken);
+                        await exporter.ExportChannelAsync(
+                            request,
+                            progress,
+                            memberCache,
+                            cancellationToken
+                        );
 
                         Interlocked.Increment(ref successfulExportCount);
                     }

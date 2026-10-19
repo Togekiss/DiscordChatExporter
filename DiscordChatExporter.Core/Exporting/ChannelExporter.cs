@@ -13,6 +13,7 @@ public class ChannelExporter(DiscordClient discord)
     public async ValueTask ExportChannelAsync(
         ExportRequest request,
         IProgress<Percentage>? progress = null,
+        GuildMemberCache? memberCache = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -28,7 +29,7 @@ public class ChannelExporter(DiscordClient discord)
         }
 
         // Build context
-        var context = new ExportContext(discord, request);
+        var context = new ExportContext(discord, request, memberCache);
         await context.PopulateChannelsAndRolesAsync(cancellationToken);
 
         // Initialize the exporter before further checks to ensure the file is created even if
@@ -84,13 +85,23 @@ public class ChannelExporter(DiscordClient discord)
         {
             try
             {
+                if (!request.MessageFilter.IsMatch(message))
+                    continue;
+
                 // Resolve members for referenced users
-                foreach (var user in message.GetReferencedUsers())
-                    await context.PopulateMemberAsync(user, cancellationToken);
+                if (
+                    request.Format
+                    is ExportFormat.HtmlDark
+                        or ExportFormat.HtmlLight
+                        or ExportFormat.Json
+                )
+                {
+                    foreach (var user in message.GetReferencedUsers())
+                        await context.PopulateMemberAsync(user, cancellationToken);
+                }
 
                 // Export the message
-                if (request.MessageFilter.IsMatch(message))
-                    await messageExporter.ExportMessageAsync(message, cancellationToken);
+                await messageExporter.ExportMessageAsync(message, cancellationToken);
             }
             catch (Exception ex)
             {
