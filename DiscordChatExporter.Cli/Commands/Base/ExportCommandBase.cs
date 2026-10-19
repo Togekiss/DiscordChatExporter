@@ -157,6 +157,13 @@ public abstract class ExportCommandBase : DiscordCommandBase
     public bool IsUtcNormalizationEnabled { get; set; } = false;
 
     [CommandOption(
+        "skip-reaction-details",
+        Description = "Export reaction emojis and counts only, omitting details of all users that reacted. "
+            + "Significantly speeds up JSON exports."
+    )]
+    public bool ShouldSkipReactionDetails { get; set; } = false;
+
+    [CommandOption(
         "fuck-russia",
         EnvironmentVariable = "FUCK_RUSSIA",
         Description = "Don't print the Support Ukraine message to the console.",
@@ -170,7 +177,9 @@ public abstract class ExportCommandBase : DiscordCommandBase
 
     protected async ValueTask ExportAsync(IConsole console, IReadOnlyList<Channel> channels)
     {
-        var cancellationToken = console.RegisterCancellationHandler();
+        try
+        {
+            var cancellationToken = console.RegisterCancellationHandler();
 
             // Asset reuse can only be enabled if the download assets option is set
             // https://github.com/Tyrrrz/DiscordChatExporter/issues/425
@@ -223,25 +232,25 @@ public abstract class ExportCommandBase : DiscordCommandBase
             {
                 await console.Output.WriteLineAsync("Fetching threads...");
 
-            var fetchedThreadsCount = 0;
-            await console
-                .CreateStatusTicker()
-                .StartAsync(
-                    "...",
-                    async ctx =>
-                    {
-                        await foreach (
-                            var thread in Discord.GetChannelThreadsAsync(
-                                channels,
-                                ThreadInclusionMode == ThreadInclusionMode.All,
-                                Before,
-                                After,
-                                RelativePositions,
-                                cancellationToken
-                            )
-                        )
+                var fetchedThreadsCount = 0;
+                await console
+                    .CreateStatusTicker()
+                    .StartAsync(
+                        "...",
+                        async ctx =>
                         {
-                            unwrappedChannels.Add(thread);
+                            await foreach (
+                                var thread in Discord.GetChannelThreadsAsync(
+                                    channels,
+                                    ThreadInclusionMode == ThreadInclusionMode.All,
+                                    Before,
+                                    After,
+                                    RelativePositions,
+                                    cancellationToken
+                                )
+                            )
+                            {
+                                unwrappedChannels.Add(thread);
 
                                 ctx.Status(
                                     Markup.Escape($"Fetched '{thread.GetHierarchicalName()}'.")
@@ -256,29 +265,29 @@ public abstract class ExportCommandBase : DiscordCommandBase
                 // have already been fetched.
                 unwrappedChannels.RemoveAll(channel => channel.Kind == ChannelKind.GuildForum);
 
-            await console.Output.WriteLineAsync($"Fetched {fetchedThreadsCount} thread(s).");
-        }
-
-        if (ThreadsOutputPath != null)
-        {
-            var isValidThreadsOutputPath =
-                // Anything is valid when exporting a single channel
-                unwrappedChannels.Count <= 1
-                // When using template tokens, assume the user knows what they're doing
-                || ThreadsOutputPath.Contains('%')
-                // Otherwise, require an existing directory or an unambiguous directory path
-                || Directory.Exists(ThreadsOutputPath)
-                || Path.EndsInDirectorySeparator(ThreadsOutputPath);
-
-            if (!isValidThreadsOutputPath)
-            {
-                throw new CommandException(
-                    "Attempted to export multiple channels, but the thread output path is neither a directory nor a template. "
-                        + "If the provided thread output path is meant to be treated as a directory, make sure it ends with a slash. "
-                        + $"Provided thread output path: '{ThreadsOutputPath}'."
-                );
+                await console.Output.WriteLineAsync($"Fetched {fetchedThreadsCount} thread(s).");
             }
-        }
+
+            if (ThreadsOutputPath != null)
+            {
+                var isValidThreadsOutputPath =
+                    // Anything is valid when exporting a single channel
+                    unwrappedChannels.Count <= 1
+                    // When using template tokens, assume the user knows what they're doing
+                    || ThreadsOutputPath.Contains('%')
+                    // Otherwise, require an existing directory or an unambiguous directory path
+                    || Directory.Exists(ThreadsOutputPath)
+                    || Path.EndsInDirectorySeparator(ThreadsOutputPath);
+
+                if (!isValidThreadsOutputPath)
+                {
+                    throw new CommandException(
+                        "Attempted to export multiple channels, but the thread output path is neither a directory nor a template. "
+                            + "If the provided thread output path is meant to be treated as a directory, make sure it ends with a slash. "
+                            + $"Provided thread output path: '{ThreadsOutputPath}'."
+                    );
+                }
+            }
 
             // Export
             var errorsByChannel = new ConcurrentDictionary<Channel, string>();
@@ -317,50 +326,51 @@ public abstract class ExportCommandBase : DiscordCommandBase
                                             innerCancellationToken
                                         );
 
-                                    // Resolve which output path to use
-                                    var OutPath =
-                                        (channel.IsThread && ThreadsOutputPath != null)
-                                            ? ThreadsOutputPath
-                                            : OutputPath;
+                                        // Resolve which output path to use
+                                        var OutPath =
+                                            (channel.IsThread && ThreadsOutputPath != null)
+                                                ? ThreadsOutputPath
+                                                : OutputPath;
 
-                                    var request = new ExportRequest(
-                                        guild,
-                                        channel,
-                                        OutPath,
-                                        AssetsDirPath,
-                                        ExportFormat,
-                                        After,
-                                        Before,
-                                        PartitionLimit,
-                                        MessageFilter,
-                                        IsReverseMessageOrder,
-                                        ShouldFormatMarkdown,
-                                        ShouldDownloadAssets,
-                                        ShouldReuseAssets,
-                                        Locale,
-                                        IsUtcNormalizationEnabled
-                                    );
+                                        var request = new ExportRequest(
+                                            guild,
+                                            channel,
+                                            OutPath,
+                                            AssetsDirPath,
+                                            ExportFormat,
+                                            After,
+                                            Before,
+                                            PartitionLimit,
+                                            MessageFilter,
+                                            IsReverseMessageOrder,
+                                            ShouldFormatMarkdown,
+                                            ShouldDownloadAssets,
+                                            ShouldReuseAssets,
+                                            Locale,
+                                            IsUtcNormalizationEnabled,
+                                            ShouldSkipReactionDetails
+                                        );
 
-                                    await Exporter.ExportChannelAsync(
-                                        request,
-                                        progress.ToPercentageBased(),
-                                        RelativePositions,
-                                        innerCancellationToken
-                                    );
-                                }
-                            );
+                                        await Exporter.ExportChannelAsync(
+                                            request,
+                                            progress.ToPercentageBased(),
+                                            RelativePositions,
+                                            innerCancellationToken
+                                        );
+                                    }
+                                );
+                            }
+                            catch (ChannelEmptyException ex)
+                            {
+                                warningsByChannel[channel] = ex.Message;
+                            }
+                            catch (DiscordChatExporterException ex) when (!ex.IsFatal)
+                            {
+                                errorsByChannel[channel] = ex.Message;
+                            }
                         }
-                        catch (ChannelEmptyException ex)
-                        {
-                            warningsByChannel[channel] = ex.Message;
-                        }
-                        catch (DiscordChatExporterException ex) when (!ex.IsFatal)
-                        {
-                            errorsByChannel[channel] = ex.Message;
-                        }
-                    }
-                );
-            });
+                    );
+                });
 
             // Print the result
             using (console.WithForegroundColor(ConsoleColor.White))
